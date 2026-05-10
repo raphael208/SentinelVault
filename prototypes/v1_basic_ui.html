@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><title>Proto 1</title></head>
+<body style="font-family:sans-serif; padding:20px;">
+    <h2>Phase 1: Rule-Based Analyser</h2>
+    <input type="text" id="p" placeholder="Type password...">
+    <p id="v">Result: Waiting...</p>
+
+    <script>
+        document.getElementById('p').oninput = function() {
+            let val = this.value;
+            let score = 0;
+            if (val.length > 8) score++;
+            if (/[0-9]/.test(val)) score++;
+            if (/[!@#$%^&*]/.test(val)) score++;
+            
+            let res = "WEAK";
+            if (score === 2) res = "MEDIUM";
+            if (score === 3) res = "STRONG";
+            document.getElementById('v').innerText = "Result: " + res;
+        };
+    </script>
+</body>
+</html>
