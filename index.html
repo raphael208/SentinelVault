@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel AI - Science Expo 2026</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
+    <style>
+        /* ===== COLOR VARIABLES & THEME ===== */
+        :root {
+            --bg-color: #05050a;                    /* Deep dark background */
+            --panel-bg: rgba(15, 15, 25, 0.9);      /* Semi-transparent panel background */
+            --text-main: #ffffff;                   /* Primary text color */
+            --text-muted: #8e8eab;                  /* Muted/secondary text color */
+            --accent-blue: #00e5ff;                 /* Cyan accent for highlights */
+            --danger-red: #ff3366;                  /* Red for warnings/breaches */
+            --safe-green: #00ff66;                  /* Green for safe/positive indicators */
+            --matrix-green: rgba(0, 255, 102, 0.15); /* Faint green for matrix effect */
+        }
+        
+        /* ===== GLOBAL STYLES ===== */
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        
+        /* ===== BODY LAYOUT ===== */
+        /* Centers content and prevents scrolling */
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            overflow: hidden; /* Prevents scrollbars from matrix effect */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* ===== MATRIX BACKGROUND ANIMATION ===== */
+        /* Full-screen canvas for animated matrix effect */
+        #matrixCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        /* ===== MAIN CONTAINER ===== */
+        /* Center panel with glassmorphism effect */
+        .container {
+            background-color: var(--panel-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);             /* Frosted glass effect */
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            width: 95%;
+            max-width: 550px;
+            max-height: 90vh;
+            overflow-y: auto;                       /* Scrollable if content overflows */
+            text-align: center;
+        }
+
+
+        /* ===== TYPOGRAPHY ===== */
+        h1 { 
+            margin: 0; 
+            color: var(--accent-blue); 
+            text-transform: uppercase; 
+            letter-spacing: 3px; /* Wide spacing for futuristic feel */
+        }
+        
+        /* ===== INPUT ELEMENTS ===== */
+        /* Container for password input and control buttons */
+        .input-group { 
+            position: relative; 
+            margin: 20px 0; 
+            display: flex; 
+            gap: 8px; 
+        }
+        .input-wrapper { 
+            position: relative; 
+            flex-grow: 1;        /* Takes up remaining space */
+        }
+        
+        /* Password input field styling */
+        input {
+            width: 100%; 
+            padding: 12px; 
+            font-size: 16px; 
+            border: 2px solid #3a3a5a;
+            border-radius: 8px; 
+            background: #0a0a1a; 
+            color: white; 
+            outline: none;
+        }
+        /* Highlight input border and add glow when focused */
+        input:focus { 
+            border-color: var(--accent-blue); 
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.3); 
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            background: #1a1a2e; 
+            border: 2px solid #3a3a5a; 
+            border-radius: 8px;
+            color: white; 
+            padding: 0 12px; 
+            cursor: pointer; 
+            transition: 0.3s;     /* Smooth hover animation */
+        }
+        .btn:hover { 
+            border-color: var(--accent-blue);      /* Highlight on hover */
+        }
+
+
+        /* ===== PROGRESS BARS & METERS ===== */
+        /* Main strength meter bar */
+        .meter-container { 
+            height: 8px; 
+            background: #1a1a2e; 
+            border-radius: 4px; 
+            margin: 15px 0; 
+            overflow: hidden; 
+        }
+        /* Colored bar that fills based on password strength */
+        .meter-bar { 
+            height: 100%; 
+            width: 0%;              /* Filled dynamically by JS */
+            background: var(--danger-red); 
+            transition: 0.5s;       /* Smooth fill animation */
+        }
+
+        /* ===== LOADING & ANIMATIONS ===== */
+        /* Spinning loader indicator */
+        .loading-spinner { 
+            display: inline-block; 
+            width: 14px; 
+            height: 14px; 
+            border: 2px solid #3a3a5a; 
+            border-top-color: var(--accent-blue); 
+            border-radius: 50%; 
+            animation: spin 0.8s linear infinite; 
+            margin-right: 6px; 
+        }
+        /* Continuous rotation animation */
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== PASSWORD VERDICT TEXT ===== */
+        /* Large text showing password strength rating */
+        .verdict { 
+            font-size: 20px; 
+            font-weight: 800; 
+            letter-spacing: 2px; 
+            margin-bottom: 10px; 
+            transition: all 0.4s ease;   /* Smooth color transition */
+        }
+        
+        /* ===== ALERT ANIMATIONS ===== */
+        /* Pulsing glow effect for breach alerts */
+        @keyframes glow-pulse { 
+            0%, 100% { box-shadow: 0 0 20px rgba(255,51,102,0.4); } 
+            50% { box-shadow: 0 0 40px rgba(255,51,102,0.8); } 
+        }
+        /* Apply pulse animation to alerts */
+        .alert-pulse { 
+            animation: glow-pulse 1.5s ease-in-out infinite; 
+        }
+        
+
+        /* ===== FEEDBACK BOX ===== */
+        /* Container for password analysis feedback */
+        .feedback-box { 
+            background: rgba(0, 229, 255, 0.08); 
+            border-left: 4px solid var(--accent-blue); 
+            padding: 12px; 
+            margin-top: 15px; 
+            border-radius: 4px; 
+            display: none;           /* Hidden until password entered */
+            text-align: left; 
+            font-size: 12px; 
+        }
+        /* Individual feedback item (strength/weakness) */
+        .feedback-item { 
+            margin: 6px 0; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+        }
+        /* Red text for weaknesses */
+        .feedback-item.bad { color: var(--danger-red); }
+        /* Green text for strengths */
+        .feedback-item.good { color: var(--safe-green); }
+        /* Icon for feedback items (✗ or ✓) */
+        .feedback-icon { font-size: 14px; }
+        
+        /* ===== STATS ROWS ===== */
+        .stats-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin: 10px 0; 
+            padding: 8px; 
+            background: #0a0a1a; 
+            border-radius: 4px; 
+            font-size: 13px; 
+        }
+        .stats-label { color: var(--text-muted); }
+        .stats-value { color: var(--accent-blue); font-weight: bold; font-family: monospace; }
+        
+        /* ===== ENTROPY BAR ===== */
+        /* Visual representation of password entropy/randomness */
+        .strength-bar { 
+            width: 100%; 
+            height: 12px; 
+            background: #1a1a2e; 
+            border-radius: 6px; 
+            overflow: hidden; 
+            margin: 10px 0; 
+        }
+        /* Gradient fill from red (weak) to green (strong) */
+        .strength-fill { 
+            height: 100%; 
+            background: linear-gradient(90deg, var(--danger-red), var(--safe-green)); 
+            transition: width 0.5s ease; 
+        }
+        
+        /* ===== ACTION BUTTONS ===== */
+        /* Container for action buttons */
+        .button-group { 
+            display: flex; 
+            gap: 8px; 
+            margin-top: 15px; 
+        }
+        /* Clear and Refresh buttons */
+        .clear-btn, .refresh-btn { 
+            flex: 1;                 /* Equal width */
+            padding: 8px; 
+            background: #1a1a2e; 
+            border: 2px solid #3a3a5a; 
+            border-radius: 6px; 
+            color: white; 
+            cursor: pointer; 
+            font-size: 12px; 
+            font-weight: bold; 
+            transition: 0.3s; 
+        }
+        /* Highlight button on hover */
+        .clear-btn:hover, .refresh-btn:hover { 
+            border-color: var(--accent-blue); 
+            background: rgba(0, 229, 255, 0.05); 
+        }
+        
+
+        /* ===== TOOLTIPS ===== */
+        /* Interactive tooltip for educational info */
+        .tooltip { 
+            position: relative; 
+            display: inline-block; 
+            cursor: help; 
+            color: var(--accent-blue); 
+            font-weight: bold; 
+            border-bottom: 1px dotted var(--accent-blue);  /* Indicates hoverable */
+        }
+        /* Hidden tooltip text shown on hover */
+        .tooltip .tooltiptext { 
+            visibility: hidden; 
+            width: 200px; 
+            background: #0a0a1a; 
+            color: var(--text-main); 
+            text-align: center; 
+            border-radius: 6px; 
+            padding: 8px; 
+            position: absolute; 
+            z-index: 1; 
+            bottom: 125%;           /* Above the tooltip trigger */
+            left: -90px; 
+            opacity: 0; 
+            transition: opacity 0.3s;  /* Fade in/out */
+            border: 1px solid rgba(0, 229, 255, 0.3); 
+            font-weight: normal; 
+            font-size: 11px; 
+        }
+        /* Show tooltip on hover */
+        .tooltip:hover .tooltiptext { 
+            visibility: visible; 
+            opacity: 1; 
+        }
+        /* Arrow pointer for tooltip */
+        .tooltip .tooltiptext::after { 
+            content: ""; 
+            position: absolute; 
+            top: 100%;              /* Below tooltip text */
+            left: 50%; 
+            margin-left: -5px; 
+            border-width: 5px; 
+            border-style: solid; 
+            border-color: #0a0a1a transparent transparent transparent; 
+        }
+
+        /* ===== TABLE STYLING ===== */
+        /* Hardware crack time table */
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+            font-size: 12px; 
+            color: var(--text-muted); 
+            text-align: left; 
+        }
+        /* Table header styling */
+        th { 
+            color: var(--accent-blue); 
+            border-bottom: 1px solid #3a3a5a; 
+            padding: 8px; 
+        }
+        /* Table data cell styling */
+        td { 
+            padding: 8px; 
+            border-bottom: 1px solid rgba(255,255,255,0.05); 
+        }
+        /* Emphasize important values */
+        .highlight-val { 
+            color: white; 
+            font-weight: bold; 
+        }
+
+        /* ===== SUGGESTION BOX ===== */
+        /* Container for AI-recommended passphrases */
+        .suggestion-box {
+            background: rgba(0, 229, 255, 0.05); 
+            border-left: 4px solid var(--accent-blue);
+            padding: 12px; 
+            margin-top: 20px; 
+            border-radius: 4px; 
+            display: none;           /* Hidden until weak password entered */
+            text-align: left;
+        }
+        /* Row holding passphrase and copy button */
+        .suggestion-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: #0a0a1a; 
+            padding: 8px; 
+            border-radius: 4px; 
+            margin-top: 5px; 
+        }
+        
+        /* Copy button styling */
+        .copy-btn { 
+            background: var(--accent-blue);  /* Cyan for call-to-action */
+            border: none; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 11px; 
+            font-weight: bold; 
+        }
+
+        /* ===== SCROLLBAR CUSTOMIZATION ===== */
+        /* Custom scrollbar for container */
+        .container::-webkit-scrollbar { width: 5px; }
+        .container::-webkit-scrollbar-thumb { 
+            background: var(--accent-blue); 
+            border-radius: 10px; 
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== MATRIX BACKGROUND ANIMATION ===== -->
+<!-- Full-screen canvas for animated Matrix-style falling binary effect -->
+<canvas id="matrixCanvas"></canvas>
+
+<!-- ===== MAIN APPLICATION CONTAINER ===== -->
+<div class="container">
+    <!-- Header and Title -->
+    <h1>🛡️ Sentinel AI</h1>
+    <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 20px;">Science Expo 2026 Edition</p>
+    
+    <!-- ===== PASSWORD INPUT SECTION ===== -->
+    <!-- Input field with visibility toggle and clear button -->
+    <div class="input-group">
+        <div class="input-wrapper">
+            <label for="passwordInput" style="display:none;">Password Input</label>
+            <!-- Password input field - user types password here -->
+            <input type="password" id="passwordInput" placeholder="Analyze security level..." autocomplete="off" aria-label="Enter password to analyze" maxlength="128">
+        </div>
+        <!-- Toggle button: show/hide password -->
+        <button id="toggleBtn" class="btn" aria-label="Toggle password visibility" title="Show/hide password">👁️</button>
+        <!-- Clear button: reset input field -->
+        <button id="clearBtn" class="btn" aria-label="Clear password" title="Clear input">⌫</button>
+    </div>
+    
+    <!-- ===== METRICS DISPLAY ===== -->
+    <!-- Shows character count and entropy (randomness) in bits -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0; font-size: 12px; color: var(--text-muted);">
+        <span>Length: <span id="charCount" style="color: var(--accent-blue); font-weight: bold;">0</span>/128</span>
+        <span>Entropy: <span id="entropyVal" style="color: var(--accent-blue); font-weight: bold;">0</span> bits</span>
+    </div>
+    
+    <!-- ===== STRENGTH INDICATOR BARS ===== -->
+    <!-- Main strength meter (red to green) -->
+    <div class="meter-container"><div class="meter-bar" id="meterBar"></div></div>
+    <!-- Entropy bar (visual representation of randomness) -->
+    <div class="strength-bar" id="entropyBar"><div class="strength-fill" id="entropyFill" style="width: 0%;"></div></div>
+    
+    <!-- ===== PASSWORD VERDICT ===== -->
+    <!-- Displays strength rating: AWAITING DATA / VERY WEAK / WEAK / MODERATE / STRONG / UNBREAKABLE / COMPROMISED -->
+    <div class="verdict" id="verdictText" style="color: var(--text-muted);" role="status" aria-live="polite">AWAITING DATA</div>
+
+    <!-- ===== ALERTS ===== -->
+    <!-- Breach detection alert - shown if password found in known breaches -->
+    <div id="leakAlert" style="display:none; color: var(--danger-red); font-weight:bold; margin-bottom:15px; font-size:13px; background: rgba(255,51,102,0.1); padding: 10px; border-radius: 4px;" role="alert">
+        🚨 THREAT: Found in Public Data Breach!
+    </div>
+
+    <!-- API error alert - shown if breach check service is unavailable -->
+    <div id="apiError" style="display:none; color: var(--danger-red); font-weight:bold; margin-bottom:15px; font-size:13px; background: rgba(255,51,102,0.1); padding: 10px; border-radius: 4px;" role="alert">
+        ⚠️ Unable to check breach database. Offline or API unavailable.
+    </div>
+    
+    <!-- ===== STRENGTH ANALYSIS FEEDBACK ===== -->
+    <!-- Detailed feedback showing password strengths and weaknesses -->
+    <div class="feedback-box" id="feedbackBox">
+        <div style="font-weight: bold; margin-bottom: 8px; color: var(--accent-blue);">📊 Strength Analysis:</div>
+        <div id="feedbackContent"></div>
+    </div>
+
+    <!-- ===== HARDWARE ATTACK ESTIMATES ===== -->
+    <!-- Table showing estimated crack times for different attack scenarios -->
+    <div id="statsSection" style="display:none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Attacker Hardware</th>
+                    <th>Est. Crack Time</th>
+                </tr>
+            </thead>
+            <tbody id="hardwareBody">
+                <!-- Populated by JavaScript with 3 scenarios: Desktop, GPU, Botnet -->
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- ===== AI PASSPHRASE SUGGESTION ===== -->
+    <!-- Recommended secure passphrase if password is weak -->
+    <div class="suggestion-box" id="suggestionBox">
+        <h3 style="margin:0; font-size:13px; color: var(--accent-blue);">💡 AI Recommended Passphrase:</h3>
+        <div class="suggestion-row">
+            <!-- Generated passphrase displayed here -->
+            <div id="suggestionText" style="color: var(--safe-green); font-family: monospace;">---</div>
+            <!-- Copy to clipboard button -->
+            <button id="copyBtn" class="copy-btn">COPY</button>
+        </div>
+        <!-- Generate alternative passphrase button -->
+        <button id="refreshSuggestion" class="refresh-btn" style="margin-top: 8px; width: 100%;">🔄 Generate Another</button>
+    </div>
+
+    <!-- ===== ACTION BUTTON ===== -->
+    <div class="button-group">
+        <!-- Educational information modal button -->
+        <button id="learnMore" class="refresh-btn" style="flex: 1;">📚 How it Works</button>
+    </div>
+
+    <!-- ===== FOOTER INFO ===== -->
+    <!-- Explains security methodology with interactive tooltip -->
+    <div style="margin-top:20px; font-size:11px; color:rgba(255,255,255,0.3);">
+        Science Info: This app uses <span class="tooltip">SHA-1 k-Anonymity<span class="tooltiptext">Only the first 5 characters of your hashed password are sent to the server. It can't identify you, but can check if your password appears in breaches!</span></span> to check breaches safely.
+    </div>
+</div>
+
+<script>
+    // ===================================================================
+    // ===== SENTINEL AI - PASSWORD SECURITY ANALYZER ===== 
+    // Science Expo 2026 Edition
+    // ===================================================================
+    // This app analyzes password strength and checks if passwords have
+    // been exposed in known data breaches using the Have I Been Pwned API
+    // with SHA-1 k-Anonymity for privacy protection.
+    // ===================================================================
+
+    // ===== MATRIX BACKGROUND ANIMATION =====
+    // Creates animated falling binary code effect for visual appeal
+    const canvas = document.getElementById('matrixCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const letters = "0101010101010101";      // Binary digits for matrix effect
+    const fontSize = 16;
+    const columns = canvas.width / fontSize;
+    const drops = Array(Math.floor(columns)).fill(1);  // Vertical position of each column
+
+    /**
+     * Draws animated Matrix-style falling binary effect
+     * Called repeatedly via setInterval to create animation
+     */
+    function drawMatrix() {
+        // Slight fade effect - creates trailing effect
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Set color to faint green
+        ctx.fillStyle = "#00ff6611";
+        ctx.font = fontSize + "px monospace";
+        
+        // Draw one character per column
+        for (let i = 0; i < drops.length; i++) {
+            // Pick random 0 or 1
+            const text = letters.charAt(Math.floor(Math.random() * letters.length));
+            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+            
+            // Reset column to top occasionally for continuous effect
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+            
+            // Move column down
+            drops[i]++;
+        }
+    }
+    // Update animation every 50ms
+    setInterval(drawMatrix, 50);
+
+    // ===== DOM ELEMENT REFERENCES =====
+    // Cache frequently accessed DOM elements for performance
+    const pwdInput = document.getElementById('passwordInput');
+    const toggleBtn = document.getElementById('toggleBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const meterBar = document.getElementById('meterBar');
+    const verdictText = document.getElementById('verdictText');
+    const suggestionBox = document.getElementById('suggestionBox');
+    const suggestionText = document.getElementById('suggestionText');
+    const hardwareBody = document.getElementById('hardwareBody');
+    const statsSection = document.getElementById('statsSection');
+    const leakAlert = document.getElementById('leakAlert');
+    const feedbackBox = document.getElementById('feedbackBox');
+    const feedbackContent = document.getElementById('feedbackContent');
+
+    // ===== EVENT LISTENERS =====
+
+    /**
+     * Toggle button: Show/hide password visibility
+     * Switches input type between 'password' and 'text'
+     * Updates button icon to indicate current state
+     */
+    toggleBtn.onclick = () => {
+        const type = pwdInput.type === 'password' ? 'text' : 'password';
+        pwdInput.type = type;
+        toggleBtn.innerText = type === 'password' ? '👁️' : '🙈';
+    };
+
+    /**
+     * Clear button: Reset password input field
+     * Clears the input and refocuses for quick re-entry
+     * Triggers UI update to reset all displays
+     */
+    clearBtn.onclick = () => {
+        pwdInput.value = '';
+        pwdInput.focus();
+        updateUI();
+    };
+
+    /**
+     * Refresh passphrase button: Generate alternative passphrase
+     * Creates a new random passphrase suggestion
+     * Updates ARIA label for accessibility
+     */
+    document.getElementById('refreshSuggestion').onclick = () => {
+        const passphrase = generatePassphrase();
+        suggestionText.innerText = passphrase;
+        suggestionText.setAttribute('aria-label', `Suggested password: ${passphrase}`);
+    };
+
+    /**
+     * "How it Works" button: Display educational modal
+     * Shows explanation of password strength, crack times,
+     * k-Anonymity concept, and why passphrases work better
+     */
+    document.getElementById('learnMore').onclick = () => {
+        alert('🔐 Sentinel AI Security Explained:\n\n🔑 PASSWORD STRENGTH:\nMeasured by entropy (randomness). More characters + variety = exponentially harder to crack.\n\n⚡ CRACK TIMES:\nShow how long different attackers would take:\n• Desktop: Standard hashing\n• GPU: Specialized hardware (10B attempts/sec)\n• Botnet: Distributed attack (10 attempts/sec)\n\n🛡️ k-ANONYMITY:\nYour password hash is split. Only first 5 chars sent to breach database. Server returns partial matches—your password stays private!\n\n💡 PASSPHRASES:\nRandom word combinations are easier to remember AND more secure than complex passwords.');
+    };
+
+    // ===== UTILITY FUNCTIONS =====
+
+    /**
+     * Check if password has been exposed in known data breaches
+     * Uses Have I Been Pwned API with k-Anonymity protection:
+     * Only sends first 5 chars of SHA-1 hash to server
+     * API returns all matches for those 5 chars, we check locally
+     * 
+     * @param {string} pwd - Password to check
+     * @returns {boolean} - True if password found in breach database
+     */
+    async function checkBreach(pwd) {
+        try {
+            // Hash password using SHA-1 (Web Crypto API)
+            const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-1', new TextEncoder().encode(pwd))))
+                .map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+            
+            // Query API with only first 5 chars of hash (k-Anonymity)
+            const res = await fetch(`https://api.pwnedpasswords.com/range/${hash.slice(0, 5)}`, { timeout: 5000 });
+            if (!res.ok) throw new Error('API error');
+            
+            // Check if rest of hash is in response
+            return (await res.text()).includes(hash.slice(5));
+        } catch (e) {
+            console.warn('Breach check failed:', e);
+            // Fail open - if API unavailable, assume password is safe
+            // Better UX than blocking on offline
+            return false;
+        }
+    }
+
+    /**
+     * Calculate Shannon entropy of password
+     * Measures randomness/unpredictability of password
+     * Formula: log2(charset_size ^ password_length)
+     * Higher entropy = harder to crack exponentially
+     * 
+     * @param {string} pwd - Password to analyze
+     * @returns {number} - Entropy in bits (rounded to 2 decimals)
+     */
+    function calculateEntropy(pwd) {
+        let charSpace = 0;
+        
+        // Count different character types available in password
+        if (/[a-z]/.test(pwd)) charSpace += 26;  // Lowercase letters
+        if (/[A-Z]/.test(pwd)) charSpace += 26;  // Uppercase letters
+        if (/[0-9]/.test(pwd)) charSpace += 10;  // Digits
+        if (/[^a-zA-Z0-9]/.test(pwd)) charSpace += 32;  // Special characters
+        
+        // Calculate bits of entropy
+        return Math.round(Math.log2(Math.pow(charSpace, pwd.length)) * 100) / 100;
+    }
+
+    /**
+     * Generate detailed feedback about password strengths/weaknesses
+     * Analyzes password against security best practices
+     * Returns HTML with checkmarks (✓) and X marks (✗)
+     * 
+     * @param {string} pwd - Password to analyze
+     * @param {number} score - zxcvbn strength score (0-4)
+     * @returns {string} - HTML feedback items
+     */
+    function generateFeedback(pwd, score) {
+        let html = '';
+        const issues = [];      // Weaknesses found
+        const strengths = [];   // Strengths found
+
+        // Check for password weaknesses
+        if (pwd.length < 8) issues.push('Too short—aim for 12+ characters');
+        if (!/[A-Z]/.test(pwd)) issues.push('Missing uppercase letters');
+        if (!/[a-z]/.test(pwd)) issues.push('Missing lowercase letters');
+        if (!/[0-9]/.test(pwd)) issues.push('Missing numbers');
+        if (!/[^a-zA-Z0-9]/.test(pwd)) issues.push('Missing special characters');
+        if (/(.)(\1{2,})/.test(pwd)) issues.push('Repeating characters detected');
+        if (/^[a-z]+$/i.test(pwd) || /^[0-9]+$/.test(pwd)) issues.push('Dictionary or numbers only');
+
+        // Check for password strengths
+        if (pwd.length >= 12) strengths.push('Good length');
+        if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) strengths.push('Mixed case');
+        if (/[^a-zA-Z0-9]/.test(pwd)) strengths.push('Special characters');
+        if (!/(.)(\1{2,})/.test(pwd)) strengths.push('No repeating chars');
+
+        // Build HTML with weaknesses (red X marks)
+        if (issues.length > 0) {
+            issues.forEach(issue => {
+                html += `<div class="feedback-item bad"><span class="feedback-icon">✗</span> ${issue}</div>`;
+            });
+        }
+        
+        // Build HTML with strengths (green checkmarks)
+        if (strengths.length > 0) {
+            strengths.forEach(strength => {
+                html += `<div class="feedback-item good"><span class="feedback-icon">✓</span> ${strength}</div>`;
+            });
+        }
+
+        return html;
+    }
+
+    /**
+     * Generate random passphrase suggestion
+     * Creates 3-word passphrase with number and special character
+     * Format: Word1-Word2-NumberSymbol (e.g., Zenith-Prism-57!)
+     * Much easier to remember than complex passwords
+     * 
+     * @returns {string} - Random passphrase
+     */
+    function generatePassphrase() {
+        const w = ["Zenith", "Neon", "Void", "Prism", "Echo", "Astro", "Pulse", "Cyber"];
+        const s = ["!", "@", "#", "$"];
+        return `${w[Math.floor(Math.random()*w.length)]}-${w[Math.floor(Math.random()*w.length)]}-${Math.floor(Math.random()*89)+10}${s[Math.floor(Math.random()*s.length)]}`;
+    }
+
+    /**
+     * Main UI update function - runs on every keystroke
+     * Analyzes password strength using zxcvbn library
+     * Updates all visual indicators and provides real-time feedback
+     * Async function to check breach status without blocking UI
+     */
+    const updateUI = async () => {
+        const pwd = pwdInput.value;
+        
+        // Update character count display
+        document.getElementById('charCount').innerText = pwd.length;
+        
+        // If password field is empty, reset all displays
+        if(!pwd) { 
+            statsSection.style.display = 'none';           // Hide crack time table
+            suggestionBox.style.display='none';            // Hide passphrase suggestion
+            feedbackBox.style.display = 'none';            // Hide feedback
+            meterBar.style.width='0';                      // Clear strength bar
+            document.getElementById('entropyVal').innerText = '0';
+            document.getElementById('entropyFill').style.width = '0%';
+            verdictText.innerText = "AWAITING DATA";
+            verdictText.style.color = 'var(--text-muted)';
+            leakAlert.style.display = 'none';
+            leakAlert.classList.remove('alert-pulse');
+            document.getElementById('apiError').style.display = 'none';
+            return; 
+        }
+
+        // Perform all analyses
+        const res = zxcvbn(pwd);                           // zxcvbn strength analysis
+        const entropy = calculateEntropy(pwd);             // Calculate entropy score
+        const isLeaked = await checkBreach(pwd);           // Check breach database
+
+        // ===== UPDATE ENTROPY DISPLAY =====
+        // Display entropy value and calculate percentage of maximum (128 bits)
+        document.getElementById('entropyVal').innerText = entropy;
+        const entropyPercent = Math.min(entropy / 128 * 100, 100);   // Cap at 100% to avoid overflow
+        document.getElementById('entropyFill').style.width = entropyPercent + '%';
+
+        // ===== UPDATE VERDICT & STRENGTH METER =====
+        // Strength ratings with corresponding colors
+        const colors = [ "#ff3366", "#ff3366", "#ffcc00", "#00d2ff", "#00ff66"];
+        const texts = ["VERY WEAK", "WEAK", "MODERATE", "STRONG", "UNBREAKABLE"];
+        
+        // If password is breached, force COMPROMISED verdict regardless of strength
+        const displayScore = isLeaked ? 0 : res.score;
+        verdictText.innerText = isLeaked ? "COMPROMISED" : texts[displayScore];
+        verdictText.style.color = colors[displayScore];
+        
+        // Update color-coded strength meter bar
+        meterBar.style.backgroundColor = colors[displayScore];
+        meterBar.style.width = ((displayScore + 1) / 5 * 100) + "%";     // Fill percentage: 20-100%
+        
+        // ===== BREACH ALERT HANDLING =====
+        // Show pulsing alert if password found in breach database
+        if (isLeaked) {
+            leakAlert.style.display = 'block';
+            leakAlert.classList.add('alert-pulse');      // Add glow pulse animation
+        } else {
+            leakAlert.style.display = 'none';
+            leakAlert.classList.remove('alert-pulse');
+        }
+
+        // Show detailed feedback
+        feedbackBox.style.display = 'block';
+        feedbackContent.innerHTML = generateFeedback(pwd, res.score);
+
+        // Suggestion
+        if(res.score < 3 || isLeaked) {
+            suggestionBox.style.display = 'block';
+            const passphrase = generatePassphrase();
+            suggestionText.innerText = passphrase;
+            suggestionText.setAttribute('aria-label', `Suggested password: ${passphrase}`);
+        } else {
+            suggestionBox.style.display = 'none';
+        }
+
+        // Hardware Table
+        statsSection.style.display = 'block';
+        const times = res.crack_times_display;
+        hardwareBody.innerHTML = `
+            <tr><td>Standard Desktop PC</td><td class="highlight-val">${times.offline_slow_hashing_1e4_per_second}</td></tr>
+            <tr><td>High-End GPU (RTX 4090)</td><td class="highlight-val">${times.offline_fast_hashing_1e10_per_second}</td></tr>
+            <tr><td>Criminal Botnet</td><td class="highlight-val">${times.online_no_throttling_10_per_second}</td></tr>
+        `;
+    };
+
+    function debounce(f, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>f(...a),ms);}; }
+    pwdInput.oninput = debounce(updateUI, 400);
+
+    document.getElementById('copyBtn').onclick = () => {
+        navigator.clipboard.writeText(suggestionText.innerText);
+        document.getElementById('copyBtn').innerText = "DONE!";
+        setTimeout(()=> document.getElementById('copyBtn').innerText = "COPY", 2000);
+    };
+</script>
+</body>
+</html>
