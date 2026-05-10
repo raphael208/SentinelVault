@@ -470,57 +470,37 @@
 </div>
 
 <script>
-    // ===================================================================
-    // ===== SENTINEL AI - PASSWORD SECURITY ANALYZER ===== 
-    // Science Expo 2026 Edition
-    // ===================================================================
-    // This app analyzes password strength and checks if passwords have
-    // been exposed in known data breaches using the Have I Been Pwned API
-    // with SHA-1 k-Anonymity for privacy protection.
-    // ===================================================================
+    // Sentinel AI - Password Security Analyzer
+    // Analyzes password strength and checks for breaches using Have I Been Pwned API with k-Anonymity.
+    // This app demonstrates real-world cybersecurity concepts:
+    // - Entropy: Measures password randomness using Shannon's formula (log2 of possible combinations).
+    // - Breach checking: Uses k-anonymity to protect privacy while querying public databases.
 
-    // ===== MATRIX BACKGROUND ANIMATION =====
-    // Creates animated falling binary code effect for visual appeal
+    // Matrix background animation
     const canvas = document.getElementById('matrixCanvas');
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    const letters = "0101010101010101";      // Binary digits for matrix effect
+    const letters = "0101010101010101";
     const fontSize = 16;
     const columns = canvas.width / fontSize;
-    const drops = Array(Math.floor(columns)).fill(1);  // Vertical position of each column
+    const drops = Array(Math.floor(columns)).fill(1);
 
-    /**
-     * Draws animated Matrix-style falling binary effect
-     * Called repeatedly via setInterval to create animation
-     */
     function drawMatrix() {
-        // Slight fade effect - creates trailing effect
         ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Set color to faint green
         ctx.fillStyle = "#00ff6611";
         ctx.font = fontSize + "px monospace";
-        
-        // Draw one character per column
         for (let i = 0; i < drops.length; i++) {
-            // Pick random 0 or 1
             const text = letters.charAt(Math.floor(Math.random() * letters.length));
             ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-            
-            // Reset column to top occasionally for continuous effect
             if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-            
-            // Move column down
             drops[i]++;
         }
     }
-    // Update animation every 50ms
     setInterval(drawMatrix, 50);
 
-    // ===== DOM ELEMENT REFERENCES =====
-    // Cache frequently accessed DOM elements for performance
+    // DOM element references
     const pwdInput = document.getElementById('passwordInput');
     const toggleBtn = document.getElementById('toggleBtn');
     const clearBtn = document.getElementById('clearBtn');
@@ -534,118 +514,69 @@
     const feedbackBox = document.getElementById('feedbackBox');
     const feedbackContent = document.getElementById('feedbackContent');
 
-    // ===== EVENT LISTENERS =====
+    // Event listeners
 
-    /**
-     * Toggle button: Show/hide password visibility
-     * Switches input type between 'password' and 'text'
-     * Updates button icon to indicate current state
-     */
+    // Toggle password visibility
     toggleBtn.onclick = () => {
         const type = pwdInput.type === 'password' ? 'text' : 'password';
         pwdInput.type = type;
         toggleBtn.innerText = type === 'password' ? '👁️' : '🙈';
     };
 
-    /**
-     * Clear button: Reset password input field
-     * Clears the input and refocuses for quick re-entry
-     * Triggers UI update to reset all displays
-     */
+    // Clear password input
     clearBtn.onclick = () => {
         pwdInput.value = '';
         pwdInput.focus();
         updateUI();
     };
 
-    /**
-     * Refresh passphrase button: Generate alternative passphrase
-     * Creates a new random passphrase suggestion
-     * Updates ARIA label for accessibility
-     */
+    // Generate new passphrase suggestion
     document.getElementById('refreshSuggestion').onclick = () => {
         const passphrase = generatePassphrase();
         suggestionText.innerText = passphrase;
         suggestionText.setAttribute('aria-label', `Suggested password: ${passphrase}`);
     };
 
-    /**
-     * "How it Works" button: Display educational modal
-     * Shows explanation of password strength, crack times,
-     * k-Anonymity concept, and why passphrases work better
-     */
+    // Show educational modal
     document.getElementById('learnMore').onclick = () => {
         alert('🔐 Sentinel AI Security Explained:\n\n🔑 PASSWORD STRENGTH:\nMeasured by entropy (randomness). More characters + variety = exponentially harder to crack.\n\n⚡ CRACK TIMES:\nShow how long different attackers would take:\n• Desktop: Standard hashing\n• GPU: Specialized hardware (10B attempts/sec)\n• Botnet: Distributed attack (10 attempts/sec)\n\n🛡️ k-ANONYMITY:\nYour password hash is split. Only first 5 chars sent to breach database. Server returns partial matches—your password stays private!\n\n💡 PASSPHRASES:\nRandom word combinations are easier to remember AND more secure than complex passwords.');
     };
 
-    // ===== UTILITY FUNCTIONS =====
+    // Utility functions
 
-    /**
-     * Check if password has been exposed in known data breaches
-     * Uses Have I Been Pwned API with k-Anonymity protection:
-     * Only sends first 5 chars of SHA-1 hash to server
-     * API returns all matches for those 5 chars, we check locally
-     * 
-     * @param {string} pwd - Password to check
-     * @returns {boolean} - True if password found in breach database
-     */
+    // Check if password has been exposed in known data breaches
+    // Uses Have I Been Pwned API with k-Anonymity: only sends first 5 chars of SHA-1 hash
+    // k-Anonymity: Sends only the first 5 characters of the password's hash to the server.
+    // This protects your identity while checking if the password appears in known breaches.
     async function checkBreach(pwd) {
         try {
-            // Hash password using SHA-1 (Web Crypto API)
             const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-1', new TextEncoder().encode(pwd))))
                 .map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-            
-            // Query API with only first 5 chars of hash (k-Anonymity)
             const res = await fetch(`https://api.pwnedpasswords.com/range/${hash.slice(0, 5)}`, { timeout: 5000 });
             if (!res.ok) throw new Error('API error');
-            
-            // Check if rest of hash is in response
             return (await res.text()).includes(hash.slice(5));
         } catch (e) {
             console.warn('Breach check failed:', e);
-            // Fail open - if API unavailable, assume password is safe
-            // Better UX than blocking on offline
             return false;
         }
     }
 
-    /**
-     * Calculate Shannon entropy of password
-     * Measures randomness/unpredictability of password
-     * Formula: log2(charset_size ^ password_length)
-     * Higher entropy = harder to crack exponentially
-     * 
-     * @param {string} pwd - Password to analyze
-     * @returns {number} - Entropy in bits (rounded to 2 decimals)
-     */
+    // Calculate Shannon entropy: A measure of unpredictability in information theory.
+    // Higher entropy means more combinations, making passwords exponentially harder to guess.
     function calculateEntropy(pwd) {
         let charSpace = 0;
-        
-        // Count different character types available in password
-        if (/[a-z]/.test(pwd)) charSpace += 26;  // Lowercase letters
-        if (/[A-Z]/.test(pwd)) charSpace += 26;  // Uppercase letters
-        if (/[0-9]/.test(pwd)) charSpace += 10;  // Digits
-        if (/[^a-zA-Z0-9]/.test(pwd)) charSpace += 32;  // Special characters
-        
-        // Calculate bits of entropy
+        if (/[a-z]/.test(pwd)) charSpace += 26;
+        if (/[A-Z]/.test(pwd)) charSpace += 26;
+        if (/[0-9]/.test(pwd)) charSpace += 10;
+        if (/[^a-zA-Z0-9]/.test(pwd)) charSpace += 32;
         return Math.round(Math.log2(Math.pow(charSpace, pwd.length)) * 100) / 100;
     }
 
-    /**
-     * Generate detailed feedback about password strengths/weaknesses
-     * Analyzes password against security best practices
-     * Returns HTML with checkmarks (✓) and X marks (✗)
-     * 
-     * @param {string} pwd - Password to analyze
-     * @param {number} score - zxcvbn strength score (0-4)
-     * @returns {string} - HTML feedback items
-     */
+    // Generate feedback about password strengths and weaknesses
     function generateFeedback(pwd, score) {
         let html = '';
-        const issues = [];      // Weaknesses found
-        const strengths = [];   // Strengths found
-
-        // Check for password weaknesses
+        const issues = [];
+        const strengths = [];
         if (pwd.length < 8) issues.push('Too short—aim for 12+ characters');
         if (!/[A-Z]/.test(pwd)) issues.push('Missing uppercase letters');
         if (!/[a-z]/.test(pwd)) issues.push('Missing lowercase letters');
@@ -653,62 +584,39 @@
         if (!/[^a-zA-Z0-9]/.test(pwd)) issues.push('Missing special characters');
         if (/(.)(\1{2,})/.test(pwd)) issues.push('Repeating characters detected');
         if (/^[a-z]+$/i.test(pwd) || /^[0-9]+$/.test(pwd)) issues.push('Dictionary or numbers only');
-
-        // Check for password strengths
         if (pwd.length >= 12) strengths.push('Good length');
         if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) strengths.push('Mixed case');
         if (/[^a-zA-Z0-9]/.test(pwd)) strengths.push('Special characters');
         if (!/(.)(\1{2,})/.test(pwd)) strengths.push('No repeating chars');
-
-        // Build HTML with weaknesses (red X marks)
         if (issues.length > 0) {
             issues.forEach(issue => {
                 html += `<div class="feedback-item bad"><span class="feedback-icon">✗</span> ${issue}</div>`;
             });
         }
-        
-        // Build HTML with strengths (green checkmarks)
         if (strengths.length > 0) {
             strengths.forEach(strength => {
                 html += `<div class="feedback-item good"><span class="feedback-icon">✓</span> ${strength}</div>`;
             });
         }
-
         return html;
     }
 
-    /**
-     * Generate random passphrase suggestion
-     * Creates 3-word passphrase with number and special character
-     * Format: Word1-Word2-NumberSymbol (e.g., Zenith-Prism-57!)
-     * Much easier to remember than complex passwords
-     * 
-     * @returns {string} - Random passphrase
-     */
+    // Generate random passphrase suggestion
     function generatePassphrase() {
         const w = ["Zenith", "Neon", "Void", "Prism", "Echo", "Astro", "Pulse", "Cyber"];
         const s = ["!", "@", "#", "$"];
         return `${w[Math.floor(Math.random()*w.length)]}-${w[Math.floor(Math.random()*w.length)]}-${Math.floor(Math.random()*89)+10}${s[Math.floor(Math.random()*s.length)]}`;
     }
 
-    /**
-     * Main UI update function - runs on every keystroke
-     * Analyzes password strength using zxcvbn library
-     * Updates all visual indicators and provides real-time feedback
-     * Async function to check breach status without blocking UI
-     */
+    // Main UI update function
     const updateUI = async () => {
         const pwd = pwdInput.value;
-        
-        // Update character count display
         document.getElementById('charCount').innerText = pwd.length;
-        
-        // If password field is empty, reset all displays
         if(!pwd) { 
-            statsSection.style.display = 'none';           // Hide crack time table
-            suggestionBox.style.display='none';            // Hide passphrase suggestion
-            feedbackBox.style.display = 'none';            // Hide feedback
-            meterBar.style.width='0';                      // Clear strength bar
+            statsSection.style.display = 'none';
+            suggestionBox.style.display='none';
+            feedbackBox.style.display = 'none';
+            meterBar.style.width='0';
             document.getElementById('entropyVal').innerText = '0';
             document.getElementById('entropyFill').style.width = '0%';
             verdictText.innerText = "AWAITING DATA";
@@ -718,47 +626,34 @@
             document.getElementById('apiError').style.display = 'none';
             return; 
         }
-
-        // Perform all analyses
-        const res = zxcvbn(pwd);                           // zxcvbn strength analysis
-        const entropy = calculateEntropy(pwd);             // Calculate entropy score
-        const isLeaked = await checkBreach(pwd);           // Check breach database
-
-        // ===== UPDATE ENTROPY DISPLAY =====
-        // Display entropy value and calculate percentage of maximum (128 bits)
+        const res = zxcvbn(pwd);
+        const entropy = calculateEntropy(pwd);
+        const isLeaked = await checkBreach(pwd);
+        // Update entropy display
+        // Entropy bar: Visualizes randomness; 128 bits is considered unbreakable by modern computers.
         document.getElementById('entropyVal').innerText = entropy;
-        const entropyPercent = Math.min(entropy / 128 * 100, 100);   // Cap at 100% to avoid overflow
+        const entropyPercent = Math.min(entropy / 128 * 100, 100);
         document.getElementById('entropyFill').style.width = entropyPercent + '%';
-
-        // ===== UPDATE VERDICT & STRENGTH METER =====
-        // Strength ratings with corresponding colors
+        // Update verdict & strength meter
         const colors = [ "#ff3366", "#ff3366", "#ffcc00", "#00d2ff", "#00ff66"];
         const texts = ["VERY WEAK", "WEAK", "MODERATE", "STRONG", "UNBREAKABLE"];
-        
-        // If password is breached, force COMPROMISED verdict regardless of strength
         const displayScore = isLeaked ? 0 : res.score;
         verdictText.innerText = isLeaked ? "COMPROMISED" : texts[displayScore];
         verdictText.style.color = colors[displayScore];
-        
-        // Update color-coded strength meter bar
         meterBar.style.backgroundColor = colors[displayScore];
-        meterBar.style.width = ((displayScore + 1) / 5 * 100) + "%";     // Fill percentage: 20-100%
-        
-        // ===== BREACH ALERT HANDLING =====
-        // Show pulsing alert if password found in breach database
+        meterBar.style.width = ((displayScore + 1) / 5 * 100) + "%";
+        // Breach alert handling
         if (isLeaked) {
             leakAlert.style.display = 'block';
-            leakAlert.classList.add('alert-pulse');      // Add glow pulse animation
+            leakAlert.classList.add('alert-pulse');
         } else {
             leakAlert.style.display = 'none';
             leakAlert.classList.remove('alert-pulse');
         }
-
-        // Show detailed feedback
+        // Show feedback
         feedbackBox.style.display = 'block';
         feedbackContent.innerHTML = generateFeedback(pwd, res.score);
-
-        // Suggestion
+        // Show suggestion if weak
         if(res.score < 3 || isLeaked) {
             suggestionBox.style.display = 'block';
             const passphrase = generatePassphrase();
@@ -767,8 +662,8 @@
         } else {
             suggestionBox.style.display = 'none';
         }
-
-        // Hardware Table
+        // Hardware table
+        // Crack times: Estimates based on attacker resources, showing exponential difficulty with entropy.
         statsSection.style.display = 'block';
         const times = res.crack_times_display;
         hardwareBody.innerHTML = `
@@ -778,9 +673,11 @@
         `;
     };
 
+    // Debounce input updates
     function debounce(f, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>f(...a),ms);}; }
     pwdInput.oninput = debounce(updateUI, 400);
 
+    // Copy suggested passphrase to clipboard
     document.getElementById('copyBtn').onclick = () => {
         navigator.clipboard.writeText(suggestionText.innerText);
         document.getElementById('copyBtn').innerText = "DONE!";
